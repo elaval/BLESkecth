@@ -29,6 +29,19 @@ BLEService batteryService("180F"); // BLE Battery Service
 // BLE Battery Level Characteristic"
 BLECharacteristic batteryLevelChar("2A19",  // standard 16-bit characteristic UUID
     BLERead | BLENotify,2);     // remote clients will be able to
+
+
+BLECharacteristic pin0Char("2A1A", BLERead | BLENotify,2);     // remote clients will be able to
+BLECharacteristic pin1Char("2A1B", BLERead | BLENotify,2);     // remote clients will be able to
+BLECharacteristic pin2Char("2A1C", BLERead | BLENotify,2);     // remote clients will be able to
+BLECharacteristic pin3Char("2A1D", BLERead | BLENotify,2);     // remote clients will be able to
+BLECharacteristic pin4Char("2A1E", BLERead | BLENotify,2);     // remote clients will be able to
+BLECharacteristic pin5Char("2A1F", BLERead | BLENotify,2);     // remote clients will be able to
+
+BLECharacteristic mychars[6] = {pin0Char, pin1Char, pin2Char, pin3Char, pin4Char, pin5Char };
+
+
+    
 // get notifications if this characteristic changes
 
 int oldBatteryLevel = 0;  // last battery level reading from analog input
@@ -61,6 +74,8 @@ const int pinA5 = A5;
 int myDPins[14] = {pinD0, pinD1, pinD2, pinD3, pinD4, pinD5, pinD6, pinD7, pinD8, pinD9, pinD10, pinD11, pinD12, pinD13};
 int myAPins[6] = {pinA0, pinA1, pinA2, pinA3, pinA4, pinA5};
 
+
+
 void setup() {
   Serial.begin(9600);    // initialize serial communication
   pinMode(13, OUTPUT);   // initialize the LED on pin 13 to indicate when a central is connected
@@ -80,10 +95,14 @@ void setup() {
   blePeripheral.setAdvertisedServiceUuid(batteryService.uuid());  // add the service UUID
   blePeripheral.addAttribute(batteryService);   // Add the BLE Battery service
   blePeripheral.addAttribute(batteryLevelChar); // add the battery level characteristic
+  blePeripheral.addAttribute(pin0Char); // add the battery level characteristic
+
+  
   //batteryLevelChar.setValue(oldBatteryLevel);   // initial value for this characteristic
       const unsigned char pinCharArray[2] = { (char)12, (char)67 };
     batteryLevelChar.setValue(pinCharArray, 2);  // and update the heart rate measurement characteristic
 
+pin0Char.setValue(pinCharArray ,2);  
 
   /* Now activate the BLE device.  It will start continuously transmitting BLE
      advertising packets and will be visible to remote BLE central devices
@@ -93,7 +112,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("Looping"); // print it
+  // Serial.print("Looping"); // print it
   // listen for BLE peripherals to connect:
   BLECentral central = blePeripheral.central();
 
@@ -113,6 +132,14 @@ void loop() {
       if (currentMillis - previousMillis >= 200) {
         previousMillis = currentMillis;
         updateBatteryLevel();
+
+        for (int i=0; i <= 5; i++){
+          if (haschangedAnalog(i)) {
+            sendAnalogValue(i);
+          }
+        } 
+
+
       }
     }
     // when the central disconnects, turn off the LED:
@@ -154,10 +181,31 @@ void updateBatteryLevel() {
   }
 }
 
+void sendAnalogValue(int pinNum) {
+  int pinValue = analogRead(myAPins[pinNum]);
+
+  int val2 = pinValue/256;
+  int val1 = pinValue - val2*256;
+
+    Serial.print("Sending value for analog pin "); // print it
+    Serial.print(pinNum); // print it      
+    Serial.print(" : "); // print it
+    Serial.print(val2);
+    Serial.print(" - "); // print it
+    Serial.print(val1);
+    Serial.print(" - "); // print it
+    Serial.println(pinValue);
+
+    const unsigned char pinCharArray[2] = { (char)val2, (char)val1 };
+    mychars[pinNum].setValue(pinCharArray, 2);  // and update the heart rate measurement characteristic
+
+}
+
 bool haschangedAnalog(int pinNum) {
   
     int currentValue = analogRead(myAPins[pinNum]);
     int previousValue = oldAValues[pinNum];
+    Serial.println(currentValue);
 
     if (currentValue != previousValue) {
       Serial.print("CHANGE for analog pin "); // print it
@@ -174,10 +222,6 @@ bool haschangedAnalog(int pinNum) {
     } else {
       return false;
     }
-
-
-
-
 
 }
 
