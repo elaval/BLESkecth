@@ -26,11 +26,7 @@
 BLEPeripheral blePeripheral;       // BLE Peripheral Device (the board you're programming)
 BLEService batteryService("180F"); // BLE Battery Service
 
-// BLE Battery Level Characteristic"
-BLECharacteristic batteryLevelChar("2A19",  // standard 16-bit characteristic UUID
-    BLERead | BLENotify,2);     // remote clients will be able to
-
-
+// BLE  Characteristics
 BLECharacteristic pin0Char("2A1A", BLERead | BLENotify,2);     // remote clients will be able to
 BLECharacteristic pin1Char("2A1B", BLERead | BLENotify,2);     // remote clients will be able to
 BLECharacteristic pin2Char("2A1C", BLERead | BLENotify,2);     // remote clients will be able to
@@ -44,7 +40,6 @@ BLECharacteristic mychars[6] = {pin0Char, pin1Char, pin2Char, pin3Char, pin4Char
     
 // get notifications if this characteristic changes
 
-int oldBatteryLevel = 0;  // last battery level reading from analog input
 long previousMillis = 0;  // last time the battery level was checked, in ms
 
 int oldDValues[14];  // previous values for each digital pin
@@ -91,18 +86,16 @@ void setup() {
      This name will appear in advertising packets
      and can be used by remote devices to identify this BLE device
      The name can be changed but maybe be truncated based on space left in advertisement packet */
-  blePeripheral.setLocalName("BatteryMonitorSketch");
+  blePeripheral.setLocalName("Genuino 101 Monitor");
   blePeripheral.setAdvertisedServiceUuid(batteryService.uuid());  // add the service UUID
   blePeripheral.addAttribute(batteryService);   // Add the BLE Battery service
-  blePeripheral.addAttribute(batteryLevelChar); // add the battery level characteristic
-  blePeripheral.addAttribute(pin0Char); // add the battery level characteristic
 
-  
-  //batteryLevelChar.setValue(oldBatteryLevel);   // initial value for this characteristic
-      const unsigned char pinCharArray[2] = { (char)12, (char)67 };
-    batteryLevelChar.setValue(pinCharArray, 2);  // and update the heart rate measurement characteristic
+  for (int i=0; i <= 5; i++){
+    blePeripheral.addAttribute(mychars[i]);
 
-pin0Char.setValue(pinCharArray ,2);  
+    const unsigned char pinCharArray[2] = { (char)0, (char)0 };
+    mychars[i].setValue(pinCharArray, 2);
+  } 
 
   /* Now activate the BLE device.  It will start continuously transmitting BLE
      advertising packets and will be visible to remote BLE central devices
@@ -131,7 +124,6 @@ void loop() {
       // if 200ms have passed, check the battery level:
       if (currentMillis - previousMillis >= 200) {
         previousMillis = currentMillis;
-        updateBatteryLevel();
 
         for (int i=0; i <= 5; i++){
           if (haschangedAnalog(i)) {
@@ -149,37 +141,6 @@ void loop() {
   }
 }
 
-void updateBatteryLevel() {
-  /* Read the current voltage level on the A0 analog input pin.
-     This is used here to simulate the charge level of a battery.
-  */
-  int battery = analogRead(A5);
-
-  //int batteryLevel = map(battery, 0, 1023, 0, 1023);
-
-  if (battery != oldBatteryLevel) {      // if the battery level has changed
-    Serial.print("Battery Level % is now: "); // print it
-    Serial.println(battery);
-      
-    int val2 = battery/256;
-    int val1 = battery - val2*256;
-
-    Serial.print("New value for analog pin "); // print it
-    //Serial.print(i); // print it      
-    Serial.print(" : "); // print it
-    Serial.print(val2);
-    Serial.print(" - "); // print it
-    Serial.print(val1);
-    Serial.print(" - "); // print it
-    Serial.println(battery);
-
-    //batteryLevelChar.setValue(260);  // and update the battery level characteristic
-    const unsigned char pinCharArray[2] = { (char)val2, (char)val1 };
-    batteryLevelChar.setValue(pinCharArray, 2);  // and update the heart rate measurement characteristic
-
-    oldBatteryLevel = battery;           // save the level for next comparison
-  }
-}
 
 void sendAnalogValue(int pinNum) {
   int pinValue = analogRead(myAPins[pinNum]);
@@ -198,25 +159,14 @@ void sendAnalogValue(int pinNum) {
 
     const unsigned char pinCharArray[2] = { (char)val2, (char)val1 };
     mychars[pinNum].setValue(pinCharArray, 2);  // and update the heart rate measurement characteristic
-
 }
 
 bool haschangedAnalog(int pinNum) {
   
     int currentValue = analogRead(myAPins[pinNum]);
     int previousValue = oldAValues[pinNum];
-    Serial.println(currentValue);
 
-    if (currentValue != previousValue) {
-      Serial.print("CHANGE for analog pin "); // print it
-      //Serial.print(i); // print it      
-      Serial.print(" : "); // print it
-      Serial.print(pinNum);
-      Serial.print(" - "); // print it
-      Serial.print(previousValue);
-      Serial.print(" - "); // print it
-      Serial.println(currentValue);
-      
+    if (currentValue != previousValue) {      
       oldAValues[pinNum] = currentValue;
       return true;
     } else {
